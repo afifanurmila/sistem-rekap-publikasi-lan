@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal | SIREKAP Publikasi LAN RI</title>
+  <link rel="icon" type="image/png" href="assets/logo-lan.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div id="boot">
+    <div class="loader" style="min-height:100vh"><div class="spinner"></div>Memeriksa sesi...</div>
+  </div>
+
+  <div class="app hidden" id="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="./" title="Ke dashboard publik">
+        <img src="assets/logo-lan.png" alt="Logo LAN RI" style="width:36px;height:36px;object-fit:contain;border-radius:6px;background:#fff;padding:2px" />
+        <div class="brand-text"><strong>SIREKAP Publikasi</strong><span>Portal Internal</span></div>
+      </a>
+      <nav class="nav" id="nav"></nav>
+      <div class="user-box">
+        <strong id="u-nama">-</strong>
+        <span id="u-role">-</span>
+        <button class="btn btn-ghost-light btn-sm btn-block" id="btn-logout" style="margin-top:10px">Keluar</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="main-head">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
+        <h2 id="page-title">Dashboard</h2>
+        <span class="spacer"></span>
+        <a class="btn btn-outline btn-sm" href="./" target="_blank">🌐 Dashboard Publik</a>
+      </header>
+      <section class="main-body" id="view"></section>
+    </div>
+  </div>
+
+  <script type="module" src="assets/js/portal.js"></script>
+</body>
+</html>

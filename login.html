@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Masuk Portal | SIREKAP Publikasi LAN RI</title>
+  <link rel="icon" type="image/png" href="assets/logo-lan.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="login-page">
+    <aside class="login-art">
+      <a class="brand" href="./">
+        <img src="assets/logo-lan.png" alt="Logo LAN RI" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:#fff;padding:2px" />
+        <div class="brand-text"><strong>SIREKAP Publikasi</strong><span>Lembaga Administrasi Negara RI</span></div>
+      </a>
+      <div>
+        <h1>Portal Pengelolaan<br />Survei &amp; Publikasi</h1>
+        <ul>
+          <li>Unit Kerja — mengusulkan &amp; memantau survei</li>
+          <li>Deputi &amp; Kepala LAN — persetujuan (ACC) satu klik</li>
+          <li>Humas — mengelola jadwal &amp; publikasi akhir</li>
+          <li>Admin DSPK2AN — menyebarkan pengumuman</li>
+        </ul>
+      </div>
+      <small style="opacity:.6">© Lembaga Administrasi Negara Republik Indonesia</small>
+    </aside>
+
+    <main class="login-form-wrap">
+      <form class="login-form" id="login-form" novalidate>
+        <h2>Masuk ke Portal</h2>
+        <p class="muted" style="margin:0 0 22px">Gunakan akun yang diberikan oleh admin.</p>
+        <div id="msg"></div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" id="email" type="email" autocomplete="username" placeholder="nama@lan.go.id" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-login" type="submit">Masuk</button>
+        <p style="text-align:center;margin-top:16px"><a href="#" id="forgot">Lupa password?</a></p>
+        <p style="text-align:center"><a href="./">← Kembali ke Dashboard</a></p>
+      </form>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase, isConfigured, configWarning, errMsg } from "./assets/js/lib.js";
+
+    const msg = document.getElementById("msg");
+    const show = (html, cls = "alert-error") => (msg.innerHTML = `<div class="alert ${cls}">${html}</div>`);
+
+    if (!isConfigured) show(configWarning().replace(/<\/?div[^>]*>/g, ""), "alert-warn");
+
+    // Sudah login? langsung ke portal
+    const { data } = await supabase.auth.getSession();
+    if (data.session) location.replace("portal.html");
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btn-login");
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      if (!email || !password) return show("Email dan password wajib diisi.");
+      btn.disabled = true; btn.textContent = "Memproses...";
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      btn.disabled = false; btn.textContent = "Masuk";
+      if (error) return show(errMsg(error));
+      location.replace("portal.html");
+    });
+
+    document.getElementById("forgot").addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      if (!email) return show("Isi email terlebih dahulu, lalu klik <b>Lupa password?</b>", "alert-info");
+      const redirectTo = new URL("portal.html#/akun", location.href).href;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) return show(errMsg(error));
+      show("Tautan reset password telah dikirim ke email Anda.", "alert-info");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "sirekap-publikasi-lan-ri",
+  "version": "1.0.0",
+  "description": "Sistem Rekapitulasi Publikasi dan Monitoring Survei LAN RI",
+  "scripts": {
+    "start": "python run_local.py"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1"
+  }
+}

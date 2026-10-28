@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Environment local files
+.env
+.env.local
+.env.*.local
+
+# Temp / Scratch files
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+
+# IDE & Editor
+.vscode/
+.idea/

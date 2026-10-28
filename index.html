@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Rekapitulasi Publikasi Survei | LAN RI</title>
+  <meta name="description" content="Dashboard rekapitulasi dan monitoring tahapan publikasi survei Lembaga Administrasi Negara Republik Indonesia." />
+  <link rel="icon" type="image/png" href="assets/logo-lan.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./">
+        <img src="assets/logo-lan.png" alt="Logo LAN RI" style="width:38px;height:38px;object-fit:contain;border-radius:6px;background:#fff;padding:2px" />
+        <div class="brand-text"><strong>SIREKAP Publikasi</strong><span>Lembaga Administrasi Negara RI</span></div>
+      </a>
+      <span class="spacer"></span>
+      <a class="btn btn-gold" href="login.html">🔐 Masuk Portal</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>Dashboard Rekapitulasi Publikasi Survei</h1>
+      <p>Pantau posisi setiap survei — dari usulan kegiatan, persetujuan pimpinan, pengumpulan data, hingga publikasi akhir di berbagai kanal LAN RI.</p>
+    </div>
+  </section>
+
+  <main class="container lift">
+    <div id="config-alert"></div>
+    <div id="announcements"></div>
+
+    <!-- KPI -->
+    <div class="grid grid-5" id="kpis"></div>
+
+    <!-- Fokus Unit Saya (Pill Selector) -->
+    <div class="card" style="margin-top:20px;padding:12px 18px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:700;color:var(--gray-700);white-space:nowrap">🎯 Fokus Unit:</span>
+        <div class="links" id="unit-pills"></div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="card" style="margin-top:20px">
+      <div class="filters">
+        <input class="input search" id="f-search" type="search" placeholder="🔍 Cari judul survei..." />
+        <select class="input" id="f-tahun"><option value="">Semua Tahun</option></select>
+        <select class="input" id="f-unit"><option value="">Semua Unit</option></select>
+        <select class="input" id="f-klaster"><option value="">Semua Klaster</option></select>
+        <select class="input" id="f-status"><option value="">Semua Status</option></select>
+        <button class="btn btn-outline" id="f-reset">Reset</button>
+      </div>
+    </div>
+
+    <!-- Pipeline tahapan -->
+    <div class="card">
+      <div class="card-head">
+        <div><h3>Posisi Survei per Tahapan</h3><p>Klik salah satu tahapan untuk memfilter tabel di bawah.</p></div>
+      </div>
+      <div class="pipeline" id="pipeline"></div>
+    </div>
+
+    <!-- Grafik -->
+    <div class="grid grid-2" style="margin-top:20px">
+      <div class="card"><div class="card-head"><div><h3>Survei per Unit Kerja</h3><p>Selesai vs. masih berjalan</p></div></div><div class="chart-box"><canvas id="ch-unit"></canvas></div></div>
+      <div class="card"><div class="card-head"><div><h3>Sebaran Klaster</h3><p>Fokus tema survei</p></div></div><div class="chart-box"><canvas id="ch-klaster"></canvas></div></div>
+      <div class="card"><div class="card-head"><div><h3>Jangkauan Kanal Publikasi</h3><p>Jumlah tautan publikasi per kanal</p></div></div><div class="chart-box"><canvas id="ch-kanal"></canvas></div></div>
+      <div class="card"><div class="card-head"><div><h3>Jadwal Publikasi per Bulan</h3><p>Target publikasi akhir tahun terpilih</p></div></div><div class="chart-box"><canvas id="ch-bulan"></canvas></div></div>
+    </div>
+
+    <!-- Kalender & Tabel -->
+    <div class="card" style="margin-top:20px">
+      <div class="tabs" id="main-tabs">
+        <button class="tab active" data-tab="tabel">📋 Daftar Survei</button>
+        <button class="tab" data-tab="kalender">📅 Kalender Jadwal Publikasi</button>
+      </div>
+      <div id="tab-tabel">
+        <div class="card-head" style="margin-bottom:12px">
+          <p id="table-info" style="margin:0"></p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="tabs" style="margin:0;border:0" id="view-mode-tabs">
+              <button class="tab active" data-mode="table">📑 Tabel</button>
+              <button class="tab" data-mode="card">🎴 Kartu</button>
+            </div>
+            <button class="btn btn-outline btn-sm" id="btn-csv">⬇ Unduh CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Judul Survei</th><th>Unit</th><th>Klaster</th><th>Jadwal Publikasi</th><th>Progres Tahapan</th><th>Status</th><th>Publikasi</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="grid grid-3 hidden" id="card-grid" style="margin-top:10px"></div>
+      </div>
+      <div id="tab-kalender" class="hidden"><div id="calendar"></div></div>
+    </div>
+  </main>
+
+  <footer class="footer">© <span id="year"></span> Lembaga Administrasi Negara Republik Indonesia · Sistem Rekapitulasi Publikasi Survei</footer>
+
+  <script type="module" src="assets/js/dashboard.js"></script>
+</body>
+</html>
