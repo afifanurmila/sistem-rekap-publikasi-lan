@@ -1,109 +1,1803 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Rekapitulasi Publikasi Survei | LAN RI</title>
-  <meta name="description" content="Dashboard rekapitulasi dan monitoring tahapan publikasi survei Lembaga Administrasi Negara Republik Indonesia." />
-  <link rel="icon" type="image/png" href="assets/logo-lan.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LAN-PubTrack — LAN Publication Tracker | LAN RI</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/logo-lan.png">
+  <link rel="apple-touch-icon" href="assets/logo-lan.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            lan: {
+              50: '#f0f5fc',
+              100: '#e1ecf8',
+              200: '#c3dbf2',
+              300: '#94c2e9',
+              500: '#2b6cb0',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              800: '#1e3a8a',
+              900: '#0f172a',
+              gold: '#d97706',
+              accent: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Initial Survey Data -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="data/initialData.js"></script>
+
+  <style>
+    [v-cloak] { display: none; }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="./">
-        <img src="assets/logo-lan.png" alt="Logo LAN RI" style="width:38px;height:38px;object-fit:contain;border-radius:6px;background:#fff;padding:2px" />
-        <div class="brand-text"><strong>SIREKAP Publikasi</strong><span>Lembaga Administrasi Negara RI</span></div>
-      </a>
-      <span class="spacer"></span>
-      <a class="btn btn-gold" href="login.html">🔐 Masuk Portal</a>
-    </div>
-  </header>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+  <div id="app" v-cloak class="flex-1 flex flex-col">
 
-  <section class="hero">
-    <div class="hero-inner">
-      <h1>Dashboard Rekapitulasi Publikasi Survei</h1>
-      <p>Pantau posisi setiap survei — dari usulan kegiatan, persetujuan pimpinan, pengumpulan data, hingga publikasi akhir di berbagai kanal LAN RI.</p>
-    </div>
-  </section>
-
-  <main class="container lift">
-    <div id="config-alert"></div>
-    <div id="announcements"></div>
-
-    <!-- KPI -->
-    <div class="grid grid-5" id="kpis"></div>
-
-    <!-- Fokus Unit Saya (Pill Selector) -->
-    <div class="card" style="margin-top:20px;padding:12px 18px">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:12px;font-weight:700;color:var(--gray-700);white-space:nowrap">🎯 Fokus Unit:</span>
-        <div class="links" id="unit-pills"></div>
-      </div>
-    </div>
-
-    <!-- Filter -->
-    <div class="card" style="margin-top:20px">
-      <div class="filters">
-        <input class="input search" id="f-search" type="search" placeholder="🔍 Cari judul survei..." />
-        <select class="input" id="f-tahun"><option value="">Semua Tahun</option></select>
-        <select class="input" id="f-unit"><option value="">Semua Unit</option></select>
-        <select class="input" id="f-klaster"><option value="">Semua Klaster</option></select>
-        <select class="input" id="f-status"><option value="">Semua Status</option></select>
-        <button class="btn btn-outline" id="f-reset">Reset</button>
-      </div>
-    </div>
-
-    <!-- Pipeline tahapan -->
-    <div class="card">
-      <div class="card-head">
-        <div><h3>Posisi Survei per Tahapan</h3><p>Klik salah satu tahapan untuk memfilter tabel di bawah.</p></div>
-      </div>
-      <div class="pipeline" id="pipeline"></div>
-    </div>
-
-    <!-- Grafik -->
-    <div class="grid grid-2" style="margin-top:20px">
-      <div class="card"><div class="card-head"><div><h3>Survei per Unit Kerja</h3><p>Selesai vs. masih berjalan</p></div></div><div class="chart-box"><canvas id="ch-unit"></canvas></div></div>
-      <div class="card"><div class="card-head"><div><h3>Sebaran Klaster</h3><p>Fokus tema survei</p></div></div><div class="chart-box"><canvas id="ch-klaster"></canvas></div></div>
-      <div class="card"><div class="card-head"><div><h3>Jangkauan Kanal Publikasi</h3><p>Jumlah tautan publikasi per kanal</p></div></div><div class="chart-box"><canvas id="ch-kanal"></canvas></div></div>
-      <div class="card"><div class="card-head"><div><h3>Jadwal Publikasi per Bulan</h3><p>Target publikasi akhir tahun terpilih</p></div></div><div class="chart-box"><canvas id="ch-bulan"></canvas></div></div>
-    </div>
-
-    <!-- Kalender & Tabel -->
-    <div class="card" style="margin-top:20px">
-      <div class="tabs" id="main-tabs">
-        <button class="tab active" data-tab="tabel">📋 Daftar Survei</button>
-        <button class="tab" data-tab="kalender">📅 Kalender Jadwal Publikasi</button>
-      </div>
-      <div id="tab-tabel">
-        <div class="card-head" style="margin-bottom:12px">
-          <p id="table-info" style="margin:0"></p>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <div class="tabs" style="margin:0;border:0" id="view-mode-tabs">
-              <button class="tab active" data-mode="table">📑 Tabel</button>
-              <button class="tab" data-mode="card">🎴 Kartu</button>
+    <!-- TOP NOTIFICATION BANNER / ALERT IF OFFLINE OR DEMO -->
+    <header class="bg-lan-900 text-white border-b border-lan-800 shadow-sm sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          
+          <!-- Logo & Title -->
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-white p-1 flex items-center justify-center shadow-md border border-slate-200/40 overflow-hidden shrink-0">
+              <img src="assets/logo-lan.png" alt="Logo LAN RI" class="w-full h-full object-contain">
             </div>
-            <button class="btn btn-outline btn-sm" id="btn-csv">⬇ Unduh CSV</button>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-base sm:text-lg tracking-tight text-white">LAN-PubTrack</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 hidden md:inline">LAN Publication Tracker</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">TA 2026</span>
+              </div>
+              <p class="text-xs text-slate-300 hidden sm:block">Sistem Rekapitulasi & Pelacakan Publikasi Survei Strategis LAN RI</p>
+            </div>
+          </div>
+
+          <!-- Top Right Controls -->
+          <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Supabase Status Indicator -->
+            <div class="flex items-center text-xs px-2.5 py-1 rounded-full border border-emerald-700/50 bg-emerald-900/40 text-emerald-200 shadow-sm"
+                 title="Terhubung ke Database Supabase PostgreSQL">
+              <span class="w-2 h-2 rounded-full mr-1.5 bg-emerald-400 animate-pulse"></span>
+              <span class="font-medium hidden md:inline">Supabase Live</span>
+            </div>
+
+            <!-- Refresh Button -->
+            <button @click="fetchDataFromSupabase" :disabled="isSyncing"
+                    class="p-2 text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg transition-all"
+                    title="Segarkan data dari database">
+              <i data-lucide="refresh-cw" class="w-4 h-4" :class="{ 'animate-spin': isSyncing }"></i>
+            </button>
+
+            <!-- New Survey Button (Enabled for Admin or Unit Kerja) -->
+            <button @click="openAddModal"
+                    class="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-lan-600 hover:from-blue-500 hover:to-lan-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all shadow-blue-900/30">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span class="hidden sm:inline">+ Usulan Baru</span>
+            </button>
+
+            <!-- Auth Profile / Login Button -->
+            <div v-if="currentUser" class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1 text-xs">
+              <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                {{ currentUser.nama ? currentUser.nama.charAt(0) : 'U' }}
+              </div>
+              <div class="hidden sm:block text-left">
+                <div class="font-bold text-white text-xs truncate max-w-[120px]">{{ currentUser.nama }}</div>
+                <div class="text-[10px] text-amber-300 font-medium">{{ getRoleLabel(currentUser.role) }} {{ currentUser.unit_kode ? '· ' + currentUser.unit_kode : '' }}</div>
+              </div>
+              <button @click="logoutUser" class="p-1 hover:text-red-400 text-slate-400 ml-1 transition-colors" title="Keluar dari akun">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <button v-else @click="openLoginModal"
+                    class="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-medium rounded-lg transition-all">
+              <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+              <span>Masuk Portal</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- FOCUS UNIT & NAVIGATION SUB-BAR -->
+        <div class="py-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+          
+          <!-- Unit Filter (Fokus Unit Saya) -->
+          <div class="flex items-center space-x-2">
+            <span class="text-amber-300 font-semibold flex items-center">
+              <i data-lucide="building-2" class="w-4 h-4 mr-1"></i>
+              Fokus Unit:
+            </span>
+            <select v-model="selectedUnit" 
+                    class="bg-slate-800 text-white font-medium border border-slate-700 rounded-md px-2.5 py-1 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="SEMUA">🌐 Semua Unit Kerja ({{ allSurveys.length }})</option>
+              <option v-for="unit in unitOptions" :key="unit" :value="unit">
+                {{ unit }} ({{ getUnitCount(unit) }})
+              </option>
+            </select>
+          </div>
+
+          <!-- Tab Navigation -->
+          <nav class="flex items-center space-x-1 sm:space-x-2">
+            <button @click="currentTab = 'analytics'"
+                    class="px-3 py-1 rounded-md font-medium transition-colors flex items-center space-x-1.5"
+                    :class="currentTab === 'analytics' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'">
+              <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+              <span>Ringkasan & Analisis</span>
+            </button>
+            <button @click="currentTab = 'timeline'"
+                    class="px-3 py-1 rounded-md font-medium transition-colors flex items-center space-x-1.5"
+                    :class="currentTab === 'timeline' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'">
+              <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+              <span>Jadwal Rilis 2026</span>
+            </button>
+            <button @click="currentTab = 'table'"
+                    class="px-3 py-1 rounded-md font-medium transition-colors flex items-center space-x-1.5"
+                    :class="currentTab === 'table' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'">
+              <i data-lucide="list-checks" class="w-3.5 h-3.5"></i>
+              <span>Data & Update Progress</span>
+            </button>
+          </nav>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN BODY CONTENT -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      <!-- UNIT BANNER ALERT (IF FILTERED BY UNIT) -->
+      <div v-if="selectedUnit !== 'SEMUA'" 
+           class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
+            <i data-lucide="focus" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-sm font-bold text-blue-900">
+              Menampilkan Agenda Khusus Unit: <span class="text-blue-700 underline font-black">{{ selectedUnit }}</span>
+            </h2>
+            <p class="text-xs text-blue-700">
+              Total {{ filteredSurveys.length }} agenda survei. PIC dapat langsung memantau dan mengisi progres publikasi di bawah.
+            </p>
           </div>
         </div>
-        <div class="table-wrap" id="table-wrap">
-          <table>
-            <thead><tr><th>#</th><th>Judul Survei</th><th>Unit</th><th>Klaster</th><th>Jadwal Publikasi</th><th>Progres Tahapan</th><th>Status</th><th>Publikasi</th></tr></thead>
-            <tbody id="tbody"></tbody>
+        <button @click="selectedUnit = 'SEMUA'" 
+                class="text-xs font-semibold px-3 py-1.5 bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 rounded-md transition-all">
+          Tampilkan Semua Unit
+        </button>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- TAB 1: ANALYTICS & EXECUTIVE OVERVIEW -->
+      <!-- ============================================================ -->
+      <div v-show="currentTab === 'analytics'" class="space-y-6">
+
+        <!-- STAT METRIC CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Total Survei -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Agenda Survei</p>
+              <h3 class="text-2xl font-black text-slate-800 mt-1">{{ stats.total }}</h3>
+              <p class="text-xs text-slate-500 mt-1">
+                Tahun 2026: <strong class="text-slate-700">{{ stats.year2026 }}</strong> | 2025: <strong class="text-slate-700">{{ stats.year2025 }}</strong>
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="book-open-check" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Selesai Publikasi -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Selesai Publikasi</p>
+              <h3 class="text-2xl font-black text-emerald-700 mt-1">{{ stats.completed }}</h3>
+              <div class="flex items-center space-x-1 mt-1">
+                <span class="text-xs font-bold text-emerald-800">{{ stats.completedPercent }}%</span>
+                <span class="text-xs text-slate-400">dari target agenda</span>
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Dalam Proses / Sedang Berjalan -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Sedang Berjalan</p>
+              <h3 class="text-2xl font-black text-amber-600 mt-1">{{ stats.inProgress }}</h3>
+              <p class="text-xs text-slate-500 mt-1">
+                Instrumen, Pengumpulan & PB
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <!-- Belum Dimulai -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Belum Dimulai</p>
+              <h3 class="text-2xl font-black text-slate-700 mt-1">{{ stats.notStarted }}</h3>
+              <p class="text-xs text-slate-500 mt-1">
+                Agenda terjadwal akhir tahun
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
+              <i data-lucide="hourglass" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 1: Klaster & Diseminasi Media -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Chart Klaster -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h4 class="text-sm font-bold text-slate-800">Distribusi Klaster Agenda</h4>
+                <p class="text-xs text-slate-500">Klasifikasi tema survei LAN RI</p>
+              </div>
+              <span class="p-1.5 rounded-md bg-slate-100 text-slate-600">
+                <i data-lucide="pie-chart" class="w-4 h-4"></i>
+              </span>
+            </div>
+            <div class="relative flex-1 min-h-[260px] flex items-center justify-center">
+              <canvas id="clusterChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart Cakupan Media Publikasi -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h4 class="text-sm font-bold text-slate-800">Cakupan Saluran Diseminasi</h4>
+                <p class="text-xs text-slate-500">Banyaknya survei yang telah memiliki link publikasi</p>
+              </div>
+              <span class="p-1.5 rounded-md bg-slate-100 text-slate-600">
+                <i data-lucide="share-2" class="w-4 h-4"></i>
+              </span>
+            </div>
+            <div class="relative flex-1 min-h-[260px] flex items-center justify-center">
+              <canvas id="mediaChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- CHARTS ROW 2: Progres Per Unit Kerja -->
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h4 class="text-sm font-bold text-slate-800">Status Progres per Unit Kerja</h4>
+              <p class="text-xs text-slate-500">Perbandingan jumlah survei selesai vs berjalan pada tiap unit</p>
+            </div>
+            <span class="p-1.5 rounded-md bg-slate-100 text-slate-600">
+              <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+            </span>
+          </div>
+          <div class="relative min-h-[280px]">
+            <canvas id="unitChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- TAB 2: SCHEDULE ROADMAP / TIMELINE 2026 -->
+      <!-- ============================================================ -->
+      <div v-show="currentTab === 'timeline'" class="space-y-6">
+        
+        <!-- Controls & Legend -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Roadmap Publikasi Survei 2026</h3>
+            <p class="text-xs text-slate-500">Jadwal target rilis per bulan dan minggu (1-4)</p>
+          </div>
+          
+          <!-- Status Legend -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <span class="inline-flex items-center">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span> Selesai Publikasi
+            </span>
+            <span class="inline-flex items-center">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 mr-1.5"></span> Dalam Proses
+            </span>
+            <span class="inline-flex items-center">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-300 mr-1.5"></span> Belum Dimulai
+            </span>
+          </div>
+        </div>
+
+        <!-- Monthly Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div v-for="month in months2026" :key="month" 
+               class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <!-- Month Header -->
+            <div class="px-4 py-3 bg-gradient-to-r from-slate-800 to-lan-900 text-white flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="calendar-days" class="w-4 h-4 text-amber-400"></i>
+                <span class="font-bold text-sm tracking-wide">{{ month }} 2026</span>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 font-medium">
+                {{ getSurveysByMonth(month).length }} agenda
+              </span>
+            </div>
+
+            <!-- Surveys in this month -->
+            <div class="p-3 divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[360px] space-y-3">
+              <div v-if="getSurveysByMonth(month).length === 0" class="py-8 text-center text-xs text-slate-400 italic">
+                Tidak ada agenda di bulan ini
+              </div>
+              
+              <div v-for="item in getSurveysByMonth(month)" :key="item.no" 
+                   class="pt-3 first:pt-0 group hover:bg-slate-50 p-2 rounded-lg transition-colors cursor-pointer"
+                   @click="openEditModal(item)">
+                <div class="flex items-start justify-between gap-2">
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        :class="getUnitBadgeClass(item.unit)">
+                    {{ item.unit }}
+                  </span>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                        :class="getStatusBadgeClass(item.status)">
+                    {{ item.status }}
+                  </span>
+                </div>
+                
+                <h5 class="text-xs font-semibold text-slate-800 group-hover:text-blue-600 mt-1.5 line-clamp-2">
+                  {{ item.judul }}
+                </h5>
+                
+                <div class="flex items-center justify-between text-[11px] text-slate-500 mt-2">
+                  <span class="inline-flex items-center font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded text-[10px]">
+                    <i data-lucide="clock-3" class="w-3 h-3 mr-1"></i>
+                    {{ item.jadwal }}
+                  </span>
+                  <span class="text-blue-600 font-medium group-hover:underline text-[10px] flex items-center">
+                    Update <i data-lucide="chevron-right" class="w-3 h-3 ml-0.5"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- TAB 3: DATA GRID & QUICK UPDATE PROGRESS (OPERATIONAL) -->
+      <!-- ============================================================ -->
+      <div v-show="currentTab === 'table'" class="space-y-4">
+
+        <!-- FILTER BAR -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            
+            <!-- Search Input -->
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+              <input type="text" v-model="searchQuery" 
+                     placeholder="Cari judul survei / catatan..."
+                     class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <!-- Filter Klaster -->
+            <div>
+              <select v-model="filterCluster" 
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Semua Klaster Tema</option>
+                <option v-for="c in clusterOptions" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+
+            <!-- Filter Status -->
+            <div>
+              <select v-model="filterStatus" 
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Semua Status Progres</option>
+                <option value="Selesai Publikasi">✅ Selesai Publikasi</option>
+                <option value="Review Policy Brief">📄 Review Policy Brief</option>
+                <option value="Pengumpulan Data">📊 Pengumpulan Data</option>
+                <option value="Penyusunan Instrumen">📝 Penyusunan Instrumen</option>
+                <option value="Dalam Proses">⏳ Dalam Proses</option>
+                <option value="Belum Dimulai">⚪ Belum Dimulai</option>
+              </select>
+            </div>
+
+            <!-- Filter Tahun -->
+            <div>
+              <select v-model="filterYear" 
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Semua Tahun</option>
+                <option value="2026">Tahun 2026 (Utama)</option>
+                <option value="2025">Tahun 2025</option>
+              </select>
+            </div>
+
+          </div>
+
+          <!-- View Switcher & Result Count -->
+          <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+            <span class="text-slate-500">
+              Ditemukan <strong class="text-slate-800">{{ tableFilteredSurveys.length }}</strong> agenda survei
+            </span>
+            <div class="flex items-center space-x-1">
+              <button @click="viewMode = 'card'" 
+                      class="p-1.5 rounded border transition-colors"
+                      :class="viewMode === 'card' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'"
+                      title="Tampilan Kartu">
+                <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+              </button>
+              <button @click="viewMode = 'table'" 
+                      class="p-1.5 rounded border transition-colors"
+                      :class="viewMode === 'table' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'"
+                      title="Tampilan Tabel">
+                <i data-lucide="table" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= CARD VIEW ================= -->
+        <div v-if="viewMode === 'card'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-for="item in tableFilteredSurveys" :key="item.no"
+               class="bg-white rounded-xl border border-slate-200 hover:border-blue-400 shadow-sm p-4 flex flex-col justify-between transition-all">
+            
+            <div>
+              <!-- Top Row: Unit, No & Status -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs font-bold text-slate-400">#{{ item.no }}</span>
+                  <span class="text-xs font-bold px-2 py-0.5 rounded" :class="getUnitBadgeClass(item.unit)">
+                    {{ item.unit }}
+                  </span>
+                  <span v-if="item.jenis" class="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                    {{ item.jenis }}
+                  </span>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap"
+                      :class="getStatusBadgeClass(item.status)">
+                  {{ item.status }}
+                </span>
+              </div>
+
+              <!-- Judul Survei -->
+              <h4 class="text-sm font-bold text-slate-800 mt-2.5 leading-snug">
+                {{ item.judul }}
+              </h4>
+
+              <!-- Klaster & Jadwal Tag -->
+              <div class="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-500">
+                <span class="inline-flex items-center text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                  <i data-lucide="tag" class="w-3 h-3 mr-1 text-slate-400"></i>
+                  {{ item.cluster1 || 'Klaster Umum' }}
+                </span>
+                <span class="inline-flex items-center text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  <i data-lucide="calendar" class="w-3 h-3 mr-1 text-amber-500"></i>
+                  Target: {{ item.jadwal }}
+                </span>
+              </div>
+
+              <!-- Media Channels Interactive Icons -->
+              <div class="mt-3.5 pt-3 border-t border-slate-100">
+                <div class="text-[11px] font-semibold text-slate-500 mb-1.5">Saluran Publikasi:</div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <!-- Web LAN -->
+                  <a v-if="hasLink(item.web_lan)" :href="getCleanLink(item.web_lan)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-[10px] font-medium flex items-center border border-blue-200" title="Website LAN">
+                    🌐 Web LAN
+                  </a>
+                  <span v-else class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] line-through opacity-50">Web LAN</span>
+
+                  <!-- Web Unit -->
+                  <a v-if="hasLink(item.web_unit)" :href="getCleanLink(item.web_unit)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[10px] font-medium flex items-center border border-indigo-200" title="Website Unit">
+                    🏢 Web Unit
+                  </a>
+                  <span v-else class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] line-through opacity-50">Web Unit</span>
+
+                  <!-- IG LAN -->
+                  <a v-if="hasLink(item.ig_lan)" :href="getCleanLink(item.ig_lan)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-pink-50 text-pink-700 hover:bg-pink-100 text-[10px] font-medium flex items-center border border-pink-200" title="Instagram LAN">
+                    📸 IG LAN
+                  </a>
+                  <span v-else class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] line-through opacity-50">IG LAN</span>
+
+                  <!-- IG Unit -->
+                  <a v-if="hasLink(item.ig_unit)" :href="getCleanLink(item.ig_unit)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 text-[10px] font-medium flex items-center border border-purple-200" title="Instagram Unit">
+                    📱 IG Unit
+                  </a>
+                  <span v-else class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] line-through opacity-50">IG Unit</span>
+
+                  <!-- YT LAN -->
+                  <a v-if="hasLink(item.yt_lan)" :href="getCleanLink(item.yt_lan)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-medium flex items-center border border-red-200" title="YouTube LAN">
+                    🎥 YT LAN
+                  </a>
+                  <span v-else class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] line-through opacity-50">YT LAN</span>
+
+                  <!-- YT Unit -->
+                  <a v-if="hasLink(item.yt_unit)" :href="getCleanLink(item.yt_unit)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-medium flex items-center border border-rose-200" title="YouTube Unit">
+                    🎬 YT Unit
+                  </a>
+                  <span v-else class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] line-through opacity-50">YT Unit</span>
+
+                  <!-- Media Online -->
+                  <a v-if="hasLink(item.media_online)" :href="getCleanLink(item.media_online)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-medium flex items-center border border-emerald-200" title="Media Online">
+                    📰 Media
+                  </a>
+
+                  <!-- Jurnal -->
+                  <a v-if="hasLink(item.jurnal)" :href="getCleanLink(item.jurnal)" target="_blank"
+                     class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 text-[10px] font-medium flex items-center border border-amber-200" title="Jurnal">
+                    📚 Jurnal
+                  </a>
+                </div>
+              </div>
+
+              <!-- Keterangan Catatan -->
+              <div v-if="item.keterangan" class="mt-3 p-2 rounded bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                <span class="font-semibold text-slate-700">Catatan:</span> {{ item.keterangan }}
+              </div>
+            </div>
+
+            <!-- Footer Action Button -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
+              <button @click="openEditModal(item)"
+                      class="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                <span>Update Progress & Link</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================= TABLE VIEW ================= -->
+        <div v-else class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-xs">
+            <thead class="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+              <tr>
+                <th class="py-3 px-3 text-left w-12">No</th>
+                <th class="py-3 px-3 text-left w-24">Unit</th>
+                <th class="py-3 px-4 text-left">Judul Survei</th>
+                <th class="py-3 px-3 text-left w-28">Jadwal</th>
+                <th class="py-3 px-3 text-left w-36">Status</th>
+                <th class="py-3 px-3 text-left">Publikasi Link</th>
+                <th class="py-3 px-3 text-center w-24">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="item in tableFilteredSurveys" :key="item.no" class="hover:bg-slate-50/80 transition-colors">
+                <td class="py-3 px-3 font-bold text-slate-500">#{{ item.no }}</td>
+                <td class="py-3 px-3">
+                  <span class="font-bold px-2 py-0.5 rounded text-[10px]" :class="getUnitBadgeClass(item.unit)">
+                    {{ item.unit }}
+                  </span>
+                </td>
+                <td class="py-3 px-4">
+                  <div class="font-bold text-slate-800 text-xs leading-snug">{{ item.judul }}</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">{{ item.cluster1 }} <span v-if="item.jenis">• {{ item.jenis }}</span></div>
+                  <div v-if="item.keterangan" class="text-[10px] text-slate-500 italic mt-1 bg-slate-50 px-1.5 py-0.5 rounded max-w-md">
+                    {{ item.keterangan }}
+                  </div>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-medium text-[11px]">
+                    {{ item.jadwal }}
+                  </span>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="font-semibold px-2 py-0.5 rounded-full border text-[11px] whitespace-nowrap"
+                        :class="getStatusBadgeClass(item.status)">
+                    {{ item.status }}
+                  </span>
+                </td>
+                <td class="py-3 px-3">
+                  <div class="flex items-center space-x-1">
+                    <span :class="hasLink(item.web_lan) ? 'text-blue-600 font-bold' : 'text-slate-300'" title="Web LAN">🌐</span>
+                    <span :class="hasLink(item.web_unit) ? 'text-indigo-600 font-bold' : 'text-slate-300'" title="Web Unit">🏢</span>
+                    <span :class="hasLink(item.ig_lan) ? 'text-pink-600 font-bold' : 'text-slate-300'" title="IG LAN">📸</span>
+                    <span :class="hasLink(item.yt_lan) ? 'text-red-600 font-bold' : 'text-slate-300'" title="YT LAN">🎥</span>
+                    <span :class="hasLink(item.media_online) ? 'text-emerald-600 font-bold' : 'text-slate-300'" title="Media Online">📰</span>
+                  </div>
+                </td>
+                <td class="py-3 px-3 text-center">
+                  <button @click="openEditModal(item)"
+                          class="p-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg transition-colors border border-blue-200"
+                          title="Edit Progres">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
           </table>
         </div>
-        <div class="grid grid-3 hidden" id="card-grid" style="margin-top:10px"></div>
+
       </div>
-      <div id="tab-kalender" class="hidden"><div id="calendar"></div></div>
+
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- DRAWER / MODAL: UPDATE PROGRESS & LINKS                      -->
+    <!-- ============================================================ -->
+    <div v-if="isEditModalOpen" 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-900 to-lan-900 text-white flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center font-bold text-xs">
+              #{{ activeEditItem.no }}
+            </span>
+            <div>
+              <h3 class="text-sm font-bold leading-tight">Update Progres & Publikasi</h3>
+              <p class="text-xs text-slate-300">Unit: <strong class="text-amber-300">{{ activeEditItem.unit }}</strong></p>
+            </div>
+          </div>
+          <button @click="closeEditModal" class="text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+          
+          <!-- Judul Survei (Read-only / editable) -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Judul Agenda Survei</label>
+            <input type="text" v-model="activeEditItem.judul"
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <!-- Section: Status & Tahapan -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Status Progres Saat Ini</label>
+              <select v-model="activeEditItem.status"
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="Selesai Publikasi">✅ Selesai Publikasi</option>
+                <option value="Review Policy Brief">📄 Review Policy Brief / Pimpinan</option>
+                <option value="Penyusunan PB/Laporan">📝 Penyusunan PB / Dokumen</option>
+                <option value="Pengolahan Data">⚙️ Pengolahan Data</option>
+                <option value="Pengumpulan Data">📊 Pengumpulan Data / Lapangan</option>
+                <option value="Penyusunan Instrumen">📋 Penyusunan Instrumen</option>
+                <option value="Tahap Persiapan">⏳ Tahap Persiapan</option>
+                <option value="Belum Dimulai">⚪ Belum Dimulai</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Target Jadwal Publikasi</label>
+              <input type="text" v-model="activeEditItem.jadwal" placeholder="Contoh: Mei (2) atau Oktober (1)"
+                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Section: Keterangan / Catatan Detail -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">
+              Catatan Progres / Keterangan Kendala
+            </label>
+            <textarea v-model="activeEditItem.keterangan" rows="3"
+                      placeholder="Contoh: Sudah selesai ekspose hasil survei, saat ini sedang penyusunan policy brief untuk dipaparkan ke pimpinan..."
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+            <p class="text-[10px] text-slate-400 mt-0.5">Teks ini akan otomatis tersinkronkan ke kolom Keterangan di Google Spreadsheet.</p>
+          </div>
+
+          <!-- Section: Link Kanal Publikasi -->
+          <div class="pt-2 border-t border-slate-100">
+            <h4 class="font-bold text-slate-800 text-xs mb-2 flex items-center">
+              <i data-lucide="link" class="w-3.5 h-3.5 mr-1.5 text-blue-600"></i>
+              Tautan / Link Diseminasi Publikasi
+            </h4>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Website LAN</label>
+                <input type="text" v-model="activeEditItem.web_lan" placeholder="https://lan.go.id/..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Website Unit / Poltek</label>
+                <input type="text" v-model="activeEditItem.web_unit" placeholder="https://..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Instagram LAN</label>
+                <input type="text" v-model="activeEditItem.ig_lan" placeholder="https://instagram.com/..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Instagram Unit</label>
+                <input type="text" v-model="activeEditItem.ig_unit" placeholder="https://instagram.com/..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">YouTube LAN</label>
+                <input type="text" v-model="activeEditItem.yt_lan" placeholder="https://youtube.com/..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">YouTube Unit</label>
+                <input type="text" v-model="activeEditItem.yt_unit" placeholder="https://youtube.com/..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Media Berita Online</label>
+                <input type="text" v-model="activeEditItem.media_online" placeholder="Link berita online..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Jurnal / Prosiding</label>
+                <input type="text" v-model="activeEditItem.jurnal" placeholder="Link jurnal penelitian..."
+                       class="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <button @click="closeEditModal" 
+                  class="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold transition-colors">
+            Batal
+          </button>
+          
+          <button @click="saveSurveyUpdate" :disabled="isSaving"
+                  class="px-5 py-2 bg-gradient-to-r from-blue-600 to-lan-600 hover:from-blue-500 hover:to-lan-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center space-x-2">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin" v-if="isSaving"></i>
+            <i data-lucide="save" class="w-4 h-4" v-else></i>
+            <span>{{ isSaving ? 'Menyimpan...' : 'Simpan & Sinkronkan' }}</span>
+          </button>
+        </div>
+
+      </div>
     </div>
-  </main>
 
-  <footer class="footer">© <span id="year"></span> Lembaga Administrasi Negara Republik Indonesia · Sistem Rekapitulasi Publikasi Survei</footer>
+    <!-- ============================================================ -->
+    <!-- MODAL: TAMBAH AGENDA SURVEI BARU                             -->
+    <!-- ============================================================ -->
+    <div v-if="isAddModalOpen" 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+        <div class="px-6 py-4 bg-lan-900 text-white flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="plus-circle" class="w-5 h-5 text-amber-400"></i>
+            <h3 class="text-sm font-bold">Tambah Agenda Survei Baru</h3>
+          </div>
+          <button @click="isAddModalOpen = false" class="text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
 
-  <script type="module" src="assets/js/dashboard.js"></script>
+        <div class="p-6 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Unit Pelaksana *</label>
+            <select v-model="newItem.unit" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+              <option v-for="u in unitOptions" :key="u" :value="u">{{ u }}</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Judul Agenda Survei *</label>
+            <input type="text" v-model="newItem.judul" placeholder="Masukkan judul survei..."
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Klaster Tema</label>
+              <select v-model="newItem.cluster1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+                <option v-for="c in clusterOptions" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Target Jadwal (Bulan & Minggu)</label>
+              <input type="text" v-model="newItem.jadwal" placeholder="Contoh: Juli (2)"
+                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Jenis Luaran</label>
+              <input type="text" v-model="newItem.jenis" placeholder="Policy Brief, Laporan, dll"
+                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Tahun Anggaran</label>
+              <input type="text" v-model="newItem.tahun" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Keterangan Awal</label>
+            <textarea v-model="newItem.keterangan" rows="2" placeholder="Catatan awal progres..."
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"></textarea>
+          </div>
+        </div>
+
+        <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <button @click="isAddModalOpen = false" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-xs font-semibold">
+            Batal
+          </button>
+          <button @click="saveNewSurvey" :disabled="isSaving"
+                  class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Tambahkan Agenda</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: SETTINGS & APPS SCRIPT SYNC CONFIG                    -->
+    <!-- ============================================================ -->
+    <div v-if="isSettingsModalOpen" 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+        <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="settings" class="w-5 h-5 text-amber-400"></i>
+            <h3 class="text-sm font-bold">Pengaturan Koneksi Google Sheets</h3>
+          </div>
+          <button @click="isSettingsModalOpen = false" class="text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4 text-xs">
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+            <p class="font-bold mb-1">Sinkronisasi Otomatis 2 Arah</p>
+            <p class="text-[11px] leading-relaxed">
+              Hubungkan dashboard ini dengan Google Apps Script Web App agar data selalu sinkron dengan spreadsheet LAN RI.
+            </p>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">URL Google Apps Script Web App</label>
+            <input type="text" v-model="scriptUrlInput" 
+                   placeholder="https://script.google.com/macros/s/.../exec"
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+            <p class="text-[10px] text-slate-400 mt-1">
+              Panduan lengkap deploy skrip tersedia di folder <code>google_apps_script/PANDUAN_SETUP_APPS_SCRIPT.md</code>.
+            </p>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+            <button @click="testScriptConnection" :disabled="isTestingConnection"
+                    class="px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg font-semibold flex items-center space-x-1.5">
+              <i data-lucide="activity" class="w-3.5 h-3.5 text-blue-600"></i>
+              <span>{{ isTestingConnection ? 'Menguji...' : 'Uji Koneksi' }}</span>
+            </button>
+            <span v-if="connectionTestResult" class="font-semibold" 
+                  :class="connectionTestResult.success ? 'text-emerald-600' : 'text-rose-600'">
+              {{ connectionTestResult.message }}
+            </span>
+          </div>
+        </div>
+
+        <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <button @click="resetToInitialData" 
+                  class="px-3 py-1.5 border border-rose-300 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold flex items-center space-x-1"
+                  title="Kembalikan status data ke master bawaan">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Reset Cache</span>
+          </button>
+          
+          <div class="flex items-center space-x-2">
+            <button @click="isSettingsModalOpen = false" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-xs font-semibold">
+              Tutup
+            </button>
+            <button @click="saveScriptUrl" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold">
+              Simpan Pengaturan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div v-if="toast.show" 
+         class="fixed bottom-5 right-5 z-50 flex items-center space-x-2 px-4 py-3 rounded-xl shadow-xl text-white text-xs font-bold transition-all animate-bounce"
+         :class="toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'">
+      <i data-lucide="check-circle" class="w-4 h-4" v-if="toast.type === 'success'"></i>
+      <i data-lucide="alert-circle" class="w-4 h-4" v-else></i>
+      <span>{{ toast.message }}</span>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+        <div class="flex items-center space-x-2">
+          <img src="assets/logo-lan.png" alt="Logo LAN RI" class="w-5 h-5 object-contain">
+          <span class="font-semibold text-slate-700">Lembaga Administrasi Negara Republik Indonesia (LAN RI)</span>
+        </div>
+        <div>
+          Dashboard Rekapitulasi & Analisis Publikasi Survei Strategis
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- APPLICATION LOGIC SCRIPT -->
+  <script>
+// ==============================================================================
+// LAN-PubTrack (LAN Publication Tracker) — Vue 3 Engine + Supabase Realtime
+// ==============================================================================
+const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+
+const SUPABASE_URL = "https://byxwnntknbvwmpwnbelo.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_4N3ap4TPBhiLvRjrss5D2A_bw79TSvj";
+
+// Inisialisasi Supabase Client
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
+});
+
+createApp({
+  setup() {
+    // State Utama
+    const allSurveys = ref([]);
+    const currentTab = ref('analytics');
+    const selectedUnit = ref('SEMUA');
+    const searchQuery = ref('');
+    const filterCluster = ref('');
+    const filterStatus = ref('');
+    const filterYear = ref('2026');
+    const viewMode = ref('card');
+
+    // State Modal & Drawer
+    const isEditModalOpen = ref(false);
+    const isAddModalOpen = ref(false);
+    const isLoginModalOpen = ref(false);
+    const isSyncing = ref(false);
+    const isSaving = ref(false);
+    const isLoggingIn = ref(false);
+    const loginError = ref('');
+
+    // State Form
+    const activeEditItem = ref({});
+    const newItem = ref({
+      judul: '',
+      unit: 'SKPP',
+      jenis: 'Policy Brief',
+      tahun: 2026,
+      jadwal: 'Maret (1)',
+      cluster1: 'Prioritas Presiden',
+      cluster2: '',
+      keterangan: 'Sedang dilakukan penyusunan instrumen'
+    });
+
+    const loginForm = ref({
+      username: '',
+      password: ''
+    });
+
+    // User Session
+    const currentUser = ref(null);
+
+    // Toast Notification
+    const toast = ref({ show: false, message: '', type: 'success' });
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type };
+      setTimeout(() => { toast.value.show = false; }, 3500);
+    };
+
+    // Opsi Unit & Klaster
+    const unitOptions = [
+      'SEMUA', 'SKPP', 'DAPKK', 'SKMP', 'SKTAN', 'DSPK2AN', 
+      'STIA JKT', 'STIA MKS', 'STIA BDG', 'SKMK'
+    ];
+
+    const clusterOptions = [
+      'Prioritas Presiden',
+      'Tata Kelola & Manajemen ASN',
+      'Pelayanan Publik',
+      'Digitalisasi'
+    ];
+
+    const months2026 = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    // Status Sanitizer & Determinasi
+    const determineStatusClient = (item) => {
+      const ket = (item.keterangan || "").toLowerCase();
+      const hasLinks = item.web_lan || item.web_unit || item.ig_lan || item.ig_unit || item.yt_lan || item.yt_unit || item.media_online || item.jurnal;
+      
+      if (item.status === 'selesai' || ket.includes('selesai') || (hasLinks && item.tahun === '2025')) {
+        return 'Selesai Publikasi';
+      }
+      if (item.status === 'menunggu_persetujuan' || ket.includes('review') || ket.includes('deputi') || ket.includes('persetujuan')) {
+        return 'Review PB Deputi';
+      }
+      if (ket.includes('revisi') || item.status === 'revisi') {
+        return 'Revisi Policy Brief';
+      }
+      if (ket.includes('penyusunan laporan') || ket.includes('policy brief')) {
+        return 'Penyusunan PB/Laporan';
+      }
+      if (ket.includes('pengumpulan data') || ket.includes('sebar') || ket.includes('responden') || ket.includes('validasi')) {
+        return 'Pengumpulan Data';
+      }
+      if (ket.includes('instrumen')) {
+        return 'Penyusunan Instrumen';
+      }
+      return 'Belum Dimulai';
+    };
+
+    // Load Data dari Supabase
+    const fetchDataFromSupabase = async () => {
+      isSyncing.value = true;
+      try {
+        const { data, error } = await supabase
+          .from('surveys')
+          .select('*, unit:units(kode, nama), pub:survey_publications(*)')
+          .order('id', { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allSurveys.value = data.map((s, idx) => {
+            const p = Array.isArray(s.pub) ? (s.pub[0] || {}) : (s.pub || {});
+            const item = {
+              no: s.id,
+              db_id: s.id,
+              unit: s.unit ? s.unit.kode : 'SKPP',
+              judul: s.judul,
+              jenis: s.jenis || '',
+              jadwal: s.jadwal_label || (s.jadwal_publikasi ? s.jadwal_publikasi.slice(0, 7) : '2026'),
+              tahun: String(s.tahun || 2026),
+              cluster1: s.klaster_1 || 'Tata Kelola & Manajemen ASN',
+              cluster2: s.klaster_2 || '',
+              jurnal: p.jurnal || '',
+              media_online: p.media_online || '',
+              web_lan: p.web_lan || '',
+              web_unit: p.web_unit || '',
+              ig_lan: p.ig_lan || '',
+              ig_unit: p.ig_unit || '',
+              yt_lan: p.yt_lan || '',
+              yt_unit: p.yt_unit || '',
+              keterangan: s.keterangan || '',
+              raw_status: s.status,
+              tahap: s.tahap || 1,
+              status: ''
+            };
+            item.status = determineStatusClient(item);
+            return item;
+          });
+          showToast(`Berhasil memuat ${allSurveys.value.length} survei dari Supabase!`, 'success');
+        } else {
+          // Fallback ke initialData.js jika database belum ada data
+          if (window.INITIAL_SURVEY_DATA) {
+            allSurveys.value = window.INITIAL_SURVEY_DATA.map(s => ({
+              ...s,
+              status: determineStatusClient(s)
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Gagal mengambil data dari Supabase:", err);
+        showToast("Gagal memuat dari database. Menggunakan data cadangan lokal.", "error");
+        if (window.INITIAL_SURVEY_DATA) {
+          allSurveys.value = window.INITIAL_SURVEY_DATA.map(s => ({
+            ...s,
+            status: determineStatusClient(s)
+          }));
+        }
+      } finally {
+        isSyncing.value = false;
+        nextTick(() => {
+          if (window.lucide) lucide.createIcons();
+          updateCharts();
+        });
+      }
+    };
+
+    // Filter Computed
+    const filteredSurveys = computed(() => {
+      let list = allSurveys.value;
+      if (selectedUnit.value !== 'SEMUA') {
+        list = list.filter(s => s.unit && s.unit.toUpperCase().includes(selectedUnit.value.toUpperCase()));
+      }
+      return list;
+    });
+
+    const tableFilteredSurveys = computed(() => {
+      let list = filteredSurveys.value;
+
+      if (currentTab.value === 'approval') {
+        return list.filter(s => s.raw_status === 'menunggu_persetujuan' || s.status === 'Review PB Deputi');
+      }
+
+      if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase();
+        list = list.filter(item => 
+          (item.judul && item.judul.toLowerCase().includes(q)) ||
+          (item.unit && item.unit.toLowerCase().includes(q)) ||
+          (item.keterangan && item.keterangan.toLowerCase().includes(q))
+        );
+      }
+
+      if (filterCluster.value) {
+        list = list.filter(item => item.cluster1 === filterCluster.value);
+      }
+
+      if (filterStatus.value) {
+        list = list.filter(item => item.status === filterStatus.value);
+      }
+
+      if (filterYear.value) {
+        list = list.filter(item => String(item.tahun) === filterYear.value);
+      }
+
+      return list;
+    });
+
+    // Statistik KPI
+    const stats = computed(() => {
+      const list = filteredSurveys.value;
+      const total = list.length;
+      const completed = list.filter(s => s.status === 'Selesai Publikasi').length;
+      const inProgress = list.filter(s => s.status && s.status !== 'Selesai Publikasi' && s.status !== 'Belum Dimulai').length;
+      const notStarted = list.filter(s => !s.status || s.status === 'Belum Dimulai').length;
+      const year2026 = list.filter(s => String(s.tahun) === '2026').length;
+      const year2025 = list.filter(s => String(s.tahun) === '2025').length;
+
+      return {
+        total,
+        completed,
+        completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
+        inProgress,
+        inProgressPercent: total > 0 ? Math.round((inProgress / total) * 100) : 0,
+        notStarted,
+        year2026,
+        year2025
+      };
+    });
+
+    const pendingApprovalCount = computed(() => {
+      return allSurveys.value.filter(s => s.raw_status === 'menunggu_persetujuan' || s.status === 'Review PB Deputi').length;
+    });
+
+    const canApprove = computed(() => {
+      if (!currentUser.value) return false;
+      const r = currentUser.value.role;
+      return r === 'deputi' || r === 'kepala_lan' || r === 'admin';
+    });
+
+    // Helpers
+    const getUnitCount = (unit) => {
+      if (unit === 'SEMUA') return allSurveys.value.length;
+      return allSurveys.value.filter(s => s.unit && s.unit.toUpperCase().includes(unit.toUpperCase())).length;
+    };
+
+    const getSurveysByMonth = (monthName) => {
+      return filteredSurveys.value.filter(s => {
+        if (!s.jadwal) return false;
+        return s.jadwal.toLowerCase().includes(monthName.toLowerCase());
+      });
+    };
+
+    const getStatusBadgeClass = (status) => {
+      const s = (status || "").toLowerCase();
+      if (s.includes('selesai')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      if (s.includes('review') || s.includes('persetujuan')) return 'bg-purple-50 text-purple-700 border-purple-200';
+      if (s.includes('revisi')) return 'bg-orange-50 text-orange-700 border-orange-200';
+      if (s.includes('pengumpulan')) return 'bg-blue-50 text-blue-700 border-blue-200';
+      if (s.includes('instrumen')) return 'bg-amber-50 text-amber-700 border-amber-200';
+      return 'bg-slate-100 text-slate-600 border-slate-200';
+    };
+
+    const getUnitBadgeClass = (unit) => {
+      const u = (unit || "").toUpperCase();
+      if (u.includes('SKPP')) return 'bg-blue-100 text-blue-800 border-blue-200';
+      if (u.includes('DAPKK')) return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      if (u.includes('SKMP')) return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+      if (u.includes('SKTAN')) return 'bg-teal-100 text-teal-800 border-teal-200';
+      if (u.includes('DSPK2AN')) return 'bg-purple-100 text-purple-800 border-purple-200';
+      if (u.includes('STIA')) return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      return 'bg-amber-100 text-amber-800 border-amber-200';
+    };
+
+    const getRoleLabel = (role) => {
+      const map = {
+        admin: 'Admin Utama',
+        deputi: 'Deputi Pimpinan',
+        kepala_lan: 'Kepala LAN RI',
+        humas: 'Biro Humas',
+        admin_dspk: 'Admin DSPK2AN',
+        unit_kerja: 'Unit Kerja'
+      };
+      return map[role] || role;
+    };
+
+    const hasLink = (val) => Boolean(val && String(val).trim() !== "");
+    const getCleanLink = (val) => {
+      const str = String(val || "").trim();
+      const match = str.match(/https?:\/\/[^\s]+/i);
+      return match ? match[0] : (str.startsWith('http') ? str : `https://${str}`);
+    };
+
+    // Modal Handlers
+    const openEditModal = (item) => {
+      activeEditItem.value = JSON.parse(JSON.stringify(item));
+      isEditModalOpen.value = true;
+      nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    };
+
+    const closeEditModal = () => {
+      isEditModalOpen.value = false;
+    };
+
+    const openAddModal = () => {
+      isAddModalOpen.value = true;
+      nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    };
+
+    const openLoginModal = () => {
+      loginError.value = '';
+      isLoginModalOpen.value = true;
+      nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    };
+
+    const fillLogin = (u, p) => {
+      loginForm.value.username = u;
+      loginForm.value.password = p;
+    };
+
+    // Autentikasi Menggunakan Username (Sesuai Tabel Mentor)
+    const submitLogin = async () => {
+      isLoggingIn.value = true;
+      loginError.value = '';
+      try {
+        const u = loginForm.value.username.trim().toLowerCase();
+        const email = u.includes('@') ? u : `${u}@lan.internal`;
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: loginForm.value.password
+        });
+
+        if (error) throw error;
+
+        // Ambil profil user
+        const { data: prof, error: profErr } = await supabase
+          .from('profiles')
+          .select('*, unit:units(kode, nama)')
+          .eq('id', data.user.id)
+          .single();
+
+        currentUser.value = {
+          id: data.user.id,
+          email: data.user.email,
+          nama: prof ? prof.nama : data.user.email.split('@')[0],
+          role: prof ? prof.role : 'unit_kerja',
+          unit_kode: prof && prof.unit ? prof.unit.kode : null
+        };
+
+        if (currentUser.value.unit_kode) {
+          selectedUnit.value = currentUser.value.unit_kode;
+        }
+
+        isLoginModalOpen.value = false;
+        showToast(`Selamat datang, ${currentUser.value.nama}!`, 'success');
+      } catch (err) {
+        console.error("Login gagal:", err);
+        loginError.value = "Username atau password salah. Silakan coba lagi.";
+      } finally {
+        isLoggingIn.value = false;
+        nextTick(() => { if (window.lucide) lucide.createIcons(); });
+      }
+    };
+
+    const logoutUser = async () => {
+      await supabase.auth.signOut();
+      currentUser.value = null;
+      selectedUnit.value = 'SEMUA';
+      showToast("Berhasil keluar akun.", "info");
+      nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    };
+
+    // Simpan Update Survei ke Supabase
+    const saveSurveyUpdate = async () => {
+      isSaving.value = true;
+      try {
+        const item = activeEditItem.value;
+        const dbId = item.db_id || item.no;
+
+        // 1. Update tabel surveys di Supabase
+        if (dbId) {
+          const { error: sError } = await supabase
+            .from('surveys')
+            .update({
+              keterangan: item.keterangan,
+              jenis: item.jenis,
+              jadwal_label: item.jadwal,
+              klaster_1: item.cluster1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', dbId);
+
+          if (sError) console.warn("Supabase update error (surveys):", sError);
+
+          // 2. Update atau Upsert tabel survey_publications
+          const pubPayload = {
+            survey_id: dbId,
+            jurnal: item.jurnal || null,
+            media_online: item.media_online || null,
+            web_lan: item.web_lan || null,
+            web_unit: item.web_unit || null,
+            ig_lan: item.ig_lan || null,
+            ig_unit: item.ig_unit || null,
+            yt_lan: item.yt_lan || null,
+            yt_unit: item.yt_unit || null,
+            updated_at: new Date().toISOString()
+          };
+
+          const { error: pError } = await supabase
+            .from('survey_publications')
+            .upsert(pubPayload, { onConflict: 'survey_id' });
+
+          if (pError) console.warn("Supabase update error (publications):", pError);
+        }
+
+        // 3. Update lokal reactive state
+        const idx = allSurveys.value.findIndex(s => String(s.no) === String(item.no));
+        if (idx !== -1) {
+          item.status = determineStatusClient(item);
+          allSurveys.value[idx] = { ...item };
+        }
+
+        closeEditModal();
+        showToast("Perubahan data survei berhasil disimpan ke Supabase!", "success");
+        updateCharts();
+      } catch (err) {
+        console.error("Gagal menyimpan update:", err);
+        showToast("Gagal menyimpan ke server: " + err.message, "error");
+      } finally {
+        isSaving.value = false;
+      }
+    };
+
+    // Tambah Survei Baru ke Supabase
+    const saveNewSurvey = async () => {
+      isSaving.value = true;
+      try {
+        // Cari unit id
+        let unitId = 1;
+        const { data: uData } = await supabase
+          .from('units')
+          .select('id')
+          .eq('kode', newItem.value.unit)
+          .maybeSingle();
+
+        if (uData) unitId = uData.id;
+
+        const payload = {
+          judul: newItem.value.judul,
+          unit_id: unitId,
+          jenis: newItem.value.jenis,
+          tahun: Number(newItem.value.tahun),
+          jadwal_label: newItem.value.jadwal,
+          klaster_1: newItem.value.cluster1,
+          klaster_2: newItem.value.cluster2 || null,
+          keterangan: newItem.value.keterangan,
+          tahap: 1,
+          status: 'draft'
+        };
+
+        const { data: inserted, error } = await supabase
+          .from('surveys')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Tambah ke state lokal
+        const newObj = {
+          no: inserted.id,
+          db_id: inserted.id,
+          unit: newItem.value.unit,
+          judul: newItem.value.judul,
+          jenis: newItem.value.jenis,
+          jadwal: newItem.value.jadwal,
+          tahun: String(newItem.value.tahun),
+          cluster1: newItem.value.cluster1,
+          cluster2: newItem.value.cluster2,
+          keterangan: newItem.value.keterangan,
+          status: 'Penyusunan Instrumen'
+        };
+
+        allSurveys.value.unshift(newObj);
+        isAddModalOpen.value = false;
+        showToast("Usulan agenda survei baru berhasil disimpan ke Supabase!", "success");
+        updateCharts();
+
+        // Reset form
+        newItem.value.judul = '';
+      } catch (err) {
+        console.error("Gagal menambah survei:", err);
+        showToast("Gagal menyimpan usulan: " + err.message, "error");
+      } finally {
+        isSaving.value = false;
+      }
+    };
+
+    // Aksi Workflow Approval (Deputi / Kepala LAN)
+    const approveSurvey = async (item, action) => {
+      const actionLabels = {
+        'setujui': 'Persetujuan ACC diberikan',
+        'revisi': 'Meminta revisi policy brief',
+        'tolak': 'Usulan survei ditolak'
+      };
+
+      try {
+        const dbId = item.db_id || item.no;
+        let newStatus = 'berjalan';
+        let newKet = item.keterangan;
+
+        if (action === 'setujui') {
+          newStatus = 'berjalan';
+          newKet = 'Telah disetujui pimpinan (ACC). Siap publikasi akhir.';
+        } else if (action === 'revisi') {
+          newStatus = 'revisi';
+          newKet = 'Sedang dilakukan revisi policy brief berdasarkan masukan Deputi.';
+        } else if (action === 'tolak') {
+          newStatus = 'ditolak';
+          newKet = 'Usulan survei tidak disetujui pimpinan.';
+        }
+
+        await supabase
+          .from('surveys')
+          .update({ status: newStatus, keterangan: newKet, updated_at: new Date().toISOString() })
+          .eq('id', dbId);
+
+        // Update lokal
+        item.keterangan = newKet;
+        item.raw_status = newStatus;
+        item.status = determineStatusClient(item);
+
+        const idx = allSurveys.value.findIndex(s => String(s.no) === String(item.no));
+        if (idx !== -1) allSurveys.value[idx] = { ...item };
+
+        closeEditModal();
+        showToast(`Berhasil: ${actionLabels[action]}`, 'success');
+        updateCharts();
+      } catch (err) {
+        console.error("Approval error:", err);
+        showToast("Gagal memproses persetujuan: " + err.message, "error");
+      }
+    };
+
+    // Chart.js Rendering (Exact as friend's layout)
+    let clusterChartInstance = null;
+    let mediaChartInstance = null;
+    let unitChartInstance = null;
+
+    const renderCharts = () => {
+      const list = filteredSurveys.value;
+
+      // 1. Cluster Chart (Doughnut)
+      const clusterCounts = {};
+      clusterOptions.forEach(c => clusterCounts[c] = 0);
+      list.forEach(s => {
+        const c = s.cluster1 || 'Lainnya';
+        clusterCounts[c] = (clusterCounts[c] || 0) + 1;
+      });
+
+      const ctxCluster = document.getElementById('clusterChart');
+      if (ctxCluster) {
+        if (clusterChartInstance) clusterChartInstance.destroy();
+        clusterChartInstance = new Chart(ctxCluster, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(clusterCounts),
+            datasets: [{
+              data: Object.values(clusterCounts),
+              backgroundColor: ['#1d4ed8', '#0284c7', '#d97706', '#10b981', '#64748b'],
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+            },
+            cutout: '65%'
+          }
+        });
+      }
+
+      // 2. Media Dissemination Chart (Horizontal Bar)
+      const mediaCounts = {
+        'Website LAN': list.filter(s => hasLink(s.web_lan)).length,
+        'Website Unit': list.filter(s => hasLink(s.web_unit)).length,
+        'Instagram LAN': list.filter(s => hasLink(s.ig_lan)).length,
+        'Instagram Unit': list.filter(s => hasLink(s.ig_unit)).length,
+        'YouTube LAN': list.filter(s => hasLink(s.yt_lan)).length,
+        'YouTube Unit': list.filter(s => hasLink(s.yt_unit)).length,
+        'Media Online': list.filter(s => hasLink(s.media_online)).length,
+        'Jurnal': list.filter(s => hasLink(s.jurnal)).length
+      };
+
+      const ctxMedia = document.getElementById('mediaChart');
+      if (ctxMedia) {
+        if (mediaChartInstance) mediaChartInstance.destroy();
+        mediaChartInstance = new Chart(ctxMedia, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(mediaCounts),
+            datasets: [{
+              label: 'Jumlah Publikasi',
+              data: Object.values(mediaCounts),
+              backgroundColor: '#2563eb',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+      }
+
+      // 3. Unit Progress Comparison Chart (Stacked Bar)
+      const unitsToCompare = unitOptions.slice(1, 9);
+      const completedByUnit = [];
+      const progressByUnit = [];
+
+      unitsToCompare.forEach(u => {
+        const uList = allSurveys.value.filter(s => s.unit && s.unit.toUpperCase().includes(u.toUpperCase()));
+        completedByUnit.push(uList.filter(s => s.status === 'Selesai Publikasi').length);
+        progressByUnit.push(uList.filter(s => s.status !== 'Selesai Publikasi').length);
+      });
+
+      const ctxUnit = document.getElementById('unitChart');
+      if (ctxUnit) {
+        if (unitChartInstance) unitChartInstance.destroy();
+        unitChartInstance = new Chart(ctxUnit, {
+          type: 'bar',
+          data: {
+            labels: unitsToCompare,
+            datasets: [
+              { label: 'Selesai Publikasi', data: completedByUnit, backgroundColor: '#10b981', borderRadius: 4 },
+              { label: 'Dalam Pengerjaan', data: progressByUnit, backgroundColor: '#f59e0b', borderRadius: 4 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+      }
+    };
+
+    const updateCharts = () => {
+      nextTick(() => { renderCharts(); });
+    };
+
+    // Watchers
+    watch(selectedUnit, () => { updateCharts(); });
+    watch(currentTab, (val) => {
+      if (val === 'analytics') updateCharts();
+      nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    });
+
+    onMounted(async () => {
+      // Periksa Sesi Login Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('*, unit:units(kode, nama)')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        currentUser.value = {
+          id: session.user.id,
+          email: session.user.email,
+          nama: prof ? prof.nama : session.user.email.split('@')[0],
+          role: prof ? prof.role : 'unit_kerja',
+          unit_kode: prof && prof.unit ? prof.unit.kode : null
+        };
+
+        if (currentUser.value.unit_kode) {
+          selectedUnit.value = currentUser.value.unit_kode;
+        }
+      }
+
+      // Ambil data survei langsung dari Supabase
+      await fetchDataFromSupabase();
+
+      if (window.lucide) lucide.createIcons();
+    });
+
+    return {
+      allSurveys,
+      currentTab,
+      selectedUnit,
+      searchQuery,
+      filterCluster,
+      filterStatus,
+      filterYear,
+      viewMode,
+      isEditModalOpen,
+      isAddModalOpen,
+      isLoginModalOpen,
+      isSyncing,
+      isSaving,
+      isLoggingIn,
+      loginError,
+      activeEditItem,
+      newItem,
+      loginForm,
+      currentUser,
+      toast,
+      unitOptions,
+      clusterOptions,
+      months2026,
+      filteredSurveys,
+      tableFilteredSurveys,
+      stats,
+      pendingApprovalCount,
+      canApprove,
+      getUnitCount,
+      getSurveysByMonth,
+      getStatusBadgeClass,
+      getUnitBadgeClass,
+      getRoleLabel,
+      hasLink,
+      getCleanLink,
+      openEditModal,
+      closeEditModal,
+      openAddModal,
+      openLoginModal,
+      fillLogin,
+      submitLogin,
+      logoutUser,
+      saveSurveyUpdate,
+      saveNewSurvey,
+      approveSurvey,
+      fetchDataFromSupabase
+    };
+  }
+}).mount('#app');
+
+</script>
+
+    <!-- ========================================== -->
+    <!-- MODAL LOGIN MENGGUNAKAN USERNAME (MENTOR)  -->
+    <!-- ========================================== -->
+    <div v-if="isLoginModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all animate-in fade-in duration-200">
+        <!-- Header Modal -->
+        <div class="bg-gradient-to-r from-lan-900 to-lan-800 px-6 py-5 text-white flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-white p-1 flex items-center justify-center">
+              <img src="assets/logo-lan.png" alt="LAN RI" class="w-full h-full object-contain">
+            </div>
+            <div>
+              <h3 class="font-bold text-base leading-tight">Masuk Portal LAN-PubTrack</h3>
+              <p class="text-xs text-slate-300 mt-0.5">Gunakan Username akun yang diberikan mentor</p>
+            </div>
+          </div>
+          <button @click="isLoginModalOpen = false" class="text-slate-400 hover:text-white transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Form Login -->
+        <form @submit.prevent="submitLogin" class="p-6 space-y-4">
+          <div v-if="loginError" class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center space-x-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 text-red-500"></i>
+            <span>{{ loginError }}</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Username</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="user" class="w-4 h-4"></i>
+              </div>
+              <input v-model="loginForm.username" type="text" required placeholder="Contoh: skpp, deputi, kepala.lan, humas.lan"
+                     class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Cukup ketik username saja, tidak perlu alamat email.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="key" class="w-4 h-4"></i>
+              </div>
+              <input v-model="loginForm.password" type="password" required placeholder="••••••••"
+                     class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+            </div>
+          </div>
+
+          <!-- Quick Selector Bantuan Akun Mentor -->
+          <div class="pt-2 border-t border-slate-100">
+            <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">Pilih Cepat Akun Demo (Mentor):</label>
+            <div class="flex flex-wrap gap-1.5 text-[10px]">
+              <button type="button" @click="fillLogin('kepala.lan', 'lan2026')" class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded border">kepala.lan</button>
+              <button type="button" @click="fillLogin('deputi', 'deputi2026')" class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded border">deputi</button>
+              <button type="button" @click="fillLogin('skpp', 'skpp2026')" class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded border">skpp</button>
+              <button type="button" @click="fillLogin('dapkk', 'dapkk2026')" class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded border">dapkk</button>
+              <button type="button" @click="fillLogin('humas.lan', 'humas2026')" class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded border">humas.lan</button>
+              <button type="button" @click="fillLogin('admin.dspk2an', 'dspk2an2026')" class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded border">admin.dspk2an</button>
+            </div>
+          </div>
+
+          <div class="pt-3 flex space-x-2">
+            <button type="button" @click="isLoginModalOpen = false"
+                    class="w-1/2 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">
+              Batal
+            </button>
+            <button type="submit" :disabled="isLoggingIn"
+                    class="w-1/2 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50">
+              {{ isLoggingIn ? 'Memproses...' : 'Masuk' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
 </body>
 </html>
